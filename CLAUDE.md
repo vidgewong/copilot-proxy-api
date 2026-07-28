@@ -40,9 +40,9 @@ bun test tests/anthropic-request.test.ts  # Run a specific test
 ```
 src/routes/
 ├── chat-completions/   # OpenAI compatible - direct passthrough
-├── responses/          # OpenAI Responses API - translates to Chat Completions
+├── responses/          # OpenAI Responses API - passthrough to Copilot /responses
 │   ├── handler.ts              # Main request handler with streaming
-│   ├── translation.ts          # Responses <-> Chat Completions conversion
+│   ├── translation.ts          # Responses <-> Chat Completions conversion (unused by the live path)
 │   └── types.ts                # Type definitions
 ├── messages/           # Anthropic compatible - requires translation
 │   ├── handler.ts              # Main request handler
@@ -335,6 +335,6 @@ Tests use `bun:test` and focus on translation logic validation:
 | `src/routes/messages/non-stream-translation.ts` | Anthropic ↔ OpenAI payload conversion |
 | `src/routes/messages/stream-translation.ts` | Streaming chunk translation |
 | `src/routes/messages/anthropic-types.ts` | Anthropic API type definitions |
-| `src/routes/responses/handler.ts` | OpenAI Responses API endpoint (with translation) |
-| `src/routes/responses/translation.ts` | Responses ↔ Chat Completions conversion |
+| `src/routes/responses/handler.ts` | OpenAI Responses API endpoint (passthrough) |
+| `src/routes/responses/translation.ts` | Responses ↔ Chat Completions conversion (unused by the live path; exercised by tests) |
 | `src/routes/responses/types.ts` | Responses API type definitions |

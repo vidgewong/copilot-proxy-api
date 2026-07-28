@@ -214,6 +214,7 @@ The following command line options are available for the `start` command:
 | --github-token | Provide GitHub token directly (must be generated using the `auth` subcommand) | none       | -g    |
 | --claude-code  | Generate a command to launch Claude Code with Copilot API config              | false      | -c    |
 | --show-token   | Show GitHub and Copilot tokens on fetch and refresh                           | false      | none  |
+| --api-key      | Require one of these comma-separated API keys for proxy routes                | none       | none  |
 | --proxy-env    | Initialize proxy from environment variables                                   | false      | none  |
 
 ### Auth Command Options
@@ -398,6 +399,14 @@ base_url = "http://localhost:4141/v1"
 wire_api = "responses"
 ```
 
+> **Note:** `base_url` must end in `/v1` — Codex appends `/responses` itself, so
+> `http://localhost:4141` and `http://localhost:4141/v1/responses` both 404.
+> The provider id (`copilot_proxy`) is an arbitrary label; it only has to match
+> between `model_provider` and the `[model_providers.*]` table name.
+> `model` must be an id your plan advertises at `GET /v1/models` — unlike the
+> Anthropic route, the Responses route does no model-name aliasing or fallback,
+> so an unavailable id returns a bare `model_not_supported` error.
+
 Start the proxy server and run Codex:
 
 ```sh
@@ -411,10 +420,12 @@ codex
 To test the setup non-interactively:
 
 ```sh
-codex exec "Say exactly: proxy ok"
+codex exec --skip-git-repo-check "Say exactly: proxy ok"
 ```
 
 Expected output includes `proxy ok` and Codex should show `provider: copilot_proxy`.
+(Without `--skip-git-repo-check`, Codex refuses to run outside a trusted git
+repository before it ever reaches the proxy.)
 
 ### Switching Back to Official Codex/OpenAI
 
@@ -432,9 +443,10 @@ codex -c model_provider='"openai"'
 
 ### Notes
 
-- `service_tier = "fast"` is ChatGPT-plan-specific. Codex may send it, but Copilot's Responses API rejects it, so the proxy strips it before forwarding.
-- `model_reasoning_effort = "high"` is supported and is forwarded through the Responses API request.
+- `service_tier` is ChatGPT-plan-specific. Codex may send it, but Copilot's Responses API rejects it, so the proxy strips it before forwarding.
+- `model_reasoning_effort = "high"` is passed through verbatim in the Responses request. The proxy does not validate it against the model's advertised effort levels.
 - Codex may log a warning while refreshing model metadata because its model catalog format differs from OpenAI's `/v1/models` list format. This does not block normal model calls.
+- Very large sessions are trimmed before forwarding (oldest input dropped, images replaced with placeholders) to stay under Copilot's payload ceiling. The proxy logs a warning when this happens.
 
 ## Running from Source
 
