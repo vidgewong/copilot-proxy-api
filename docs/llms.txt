@@ -1,0 +1,51 @@
+# Copilot Proxy API
+
+> Self-hosted proxy that exposes GitHub Copilot as an OpenAI-compatible and
+> Anthropic-compatible API, so coding agents like Claude Code and Codex CLI can
+> use a GitHub Copilot subscription as their model backend.
+
+Unofficial, reverse-engineered, MIT-licensed. Not affiliated with GitHub. Runs
+locally on port 4141 by default and requires an active Copilot subscription.
+
+## What it does
+
+- Serves `POST /v1/messages` (Anthropic Messages) — used by Claude Code.
+- Serves `POST /v1/responses` (OpenAI Responses) — used by Codex CLI.
+- Serves `POST /v1/chat/completions`, `GET /v1/models`, `POST /v1/embeddings`.
+- Translates Anthropic requests to Copilot's format and back; the Responses
+  route is a direct passthrough to Copilot's own Responses endpoint.
+
+## Getting started with Claude Code
+
+Run `npx copilot-proxy-api@latest start --claude-code`, complete GitHub device
+sign-in, and select a primary and a small/fast model. The command prints a
+launch command that sets `ANTHROPIC_BASE_URL=http://localhost:4141/` and
+`ANTHROPIC_AUTH_TOKEN` for Claude Code.
+
+## Getting started with Codex CLI
+
+Start the proxy with `npx copilot-proxy-api@latest start`, then add a custom
+model provider to `~/.codex/config.toml`:
+
+```toml
+model = "gpt-5.5"
+model_provider = "copilot_proxy"
+model_reasoning_effort = "high"
+
+[model_providers.copilot_proxy]
+name = "GitHub Copilot via copilot-proxy-api"
+base_url = "http://localhost:4141/v1"
+wire_api = "responses"
+```
+
+`base_url` must end in `/v1` — Codex appends `/responses` itself. Setting
+`OPENAI_BASE_URL` alone does not work on recent Codex versions. Pick a model id
+that your plan advertises at `GET /v1/models`.
+
+## Links
+
+- Home: https://voidsteed.github.io/copilot-proxy-api/
+- Source: https://github.com/voidsteed/copilot-proxy-api
+- README: https://github.com/voidsteed/copilot-proxy-api#readme
+- npm: https://www.npmjs.com/package/copilot-proxy-api
+- Usage dashboard: https://voidsteed.github.io/copilot-proxy-api/dashboard.html

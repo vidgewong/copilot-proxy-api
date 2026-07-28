@@ -12,17 +12,25 @@
       }
     </script>
 
-    <title>Copilot Proxy API for Claude Code and Codex CLI</title>
+    <title>
+      Copilot Proxy API — GitHub Copilot for Claude Code and Codex CLI
+    </title>
     <meta
       name="description"
       content="Self-hosted GitHub Copilot bridge for Claude Code and Codex CLI with OpenAI Responses, Anthropic Messages, streaming resilience, and context management."
     />
+    <meta
+      name="keywords"
+      content="github copilot proxy, claude code, codex cli, anthropic messages api, openai responses api, copilot openai compatible, self-hosted llm proxy"
+    />
+    <meta name="author" content="voidsteed" />
     <meta name="theme-color" content="#1d2021" />
     <link
       rel="canonical"
       href="https://voidsteed.github.io/copilot-proxy-api/"
     />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="sitemap" type="application/xml" href="sitemap.xml" />
     <link
       rel="preload"
       href="assets/demo-poster.jpg"
@@ -75,13 +83,71 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "SoftwareSourceCode",
-        "name": "Copilot Proxy API",
-        "description": "Self-hosted GitHub Copilot bridge for Claude Code and Codex CLI with OpenAI Responses, Anthropic Messages, streaming resilience, and context management.",
-        "codeRepository": "https://github.com/voidsteed/copilot-proxy-api",
-        "programmingLanguage": "TypeScript",
-        "license": "https://github.com/voidsteed/copilot-proxy-api/blob/master/LICENSE",
-        "runtimePlatform": "Node.js"
+        "@graph": [
+          {
+            "@type": "SoftwareSourceCode",
+            "@id": "https://voidsteed.github.io/copilot-proxy-api/#software",
+            "name": "Copilot Proxy API",
+            "alternateName": "copilot-proxy-api",
+            "description": "Self-hosted GitHub Copilot bridge for Claude Code and Codex CLI with OpenAI Responses, Anthropic Messages, streaming resilience, and context management.",
+            "codeRepository": "https://github.com/voidsteed/copilot-proxy-api",
+            "programmingLanguage": "TypeScript",
+            "license": "https://github.com/voidsteed/copilot-proxy-api/blob/master/LICENSE",
+            "runtimePlatform": "Node.js",
+            "applicationCategory": "DeveloperApplication",
+            "operatingSystem": "Linux, macOS, Windows",
+            "keywords": "GitHub Copilot, Claude Code, Codex CLI, OpenAI Responses API, Anthropic Messages API, proxy",
+            "url": "https://voidsteed.github.io/copilot-proxy-api/",
+            "author": {
+              "@type": "Person",
+              "name": "voidsteed",
+              "url": "https://github.com/voidsteed"
+            },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://voidsteed.github.io/copilot-proxy-api/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "How do I use GitHub Copilot with Claude Code?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Run 'npx copilot-proxy-api@latest start --claude-code'. The proxy exposes Copilot as an Anthropic Messages API at POST /v1/messages, then prints a launch command that points Claude Code at http://localhost:4141."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How do I use GitHub Copilot with Codex CLI?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Start the proxy with 'npx copilot-proxy-api@latest start', then add a custom model provider to ~/.codex/config.toml with base_url = \"http://localhost:4141/v1\" and wire_api = \"responses\". Codex then calls Copilot through the OpenAI Responses API."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does it require an API key?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No key is required by default because the proxy is meant to stay on localhost. Pass --api-key to require a key when the proxy is reachable from anywhere other than your machine."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is this an official GitHub project?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. It is an unofficial, reverse-engineered compatibility project that is not affiliated with or supported by GitHub, and Copilot API changes may break it without notice."
+                }
+              }
+            ]
+          }
+        ]
       }
     </script>
   </head>
@@ -96,7 +162,8 @@
         </a>
 
         <nav class="site-nav" aria-label="Primary navigation">
-          <a class="nav-docs" href="#quick-start">Quick start</a>
+          <a class="nav-docs" href="#quick-start">Claude Code</a>
+          <a class="nav-docs" href="#codex-quick-start">Codex CLI</a>
           <a href="dashboard.html">Dashboard</a>
           <a
             href="https://github.com/voidsteed/copilot-proxy-api"
@@ -120,8 +187,11 @@
             <a class="button button-primary" href="#quick-start"
               >Start with Claude Code</a
             >
+            <a class="button button-secondary" href="#codex-quick-start"
+              >Start with Codex CLI</a
+            >
             <a
-              class="button button-secondary"
+              class="button button-ghost"
               href="https://github.com/voidsteed/copilot-proxy-api"
               target="_blank"
               rel="noopener noreferrer"
@@ -190,7 +260,8 @@
           <h2 id="quick-start-title">Claude Code in one command.</h2>
           <p>
             Run the proxy, sign in to GitHub, choose your models, and paste the
-            generated launch command.
+            generated launch command. Claude Code talks to Copilot through the
+            Anthropic Messages API.
           </p>
         </div>
 
@@ -202,7 +273,8 @@
                 class="copy-button"
                 type="button"
                 data-copy-target="quick-start-command"
-                aria-describedby="copy-status"
+                data-copy-status="claude-copy-status"
+                data-copy-label="Launch command copied to your clipboard."
               >
                 Copy
               </button>
@@ -239,7 +311,82 @@
         </div>
         <p
           class="copy-status"
-          id="copy-status"
+          id="claude-copy-status"
+          role="status"
+          aria-live="polite"
+        ></p>
+      </section>
+
+      <section
+        class="section shell quick-start codex-quick-start"
+        id="codex-quick-start"
+        aria-labelledby="codex-quick-start-title"
+      >
+        <div class="section-heading">
+          <h2 id="codex-quick-start-title">Codex CLI in one config block.</h2>
+          <p>
+            Codex reaches Copilot through the OpenAI Responses API. Point it at
+            the proxy with a custom model provider, then run Codex as usual.
+          </p>
+        </div>
+
+        <div class="quick-start-grid">
+          <div class="code-panel">
+            <div class="code-panel-bar">
+              <span>~/.codex/config.toml</span>
+              <button
+                class="copy-button"
+                type="button"
+                data-copy-target="codex-config"
+                data-copy-status="codex-copy-status"
+                data-copy-label="Codex configuration copied to your clipboard."
+              >
+                Copy
+              </button>
+            </div>
+            <pre class="code-block"><code id="codex-config">model = "gpt-5.5"
+model_provider = "copilot_proxy"
+model_reasoning_effort = "high"
+
+[model_providers.copilot_proxy]
+name = "GitHub Copilot via copilot-proxy-api"
+base_url = "http://localhost:4141/v1"
+wire_api = "responses"</code></pre>
+            <p class="code-note">
+              Setting <code>OPENAI_BASE_URL</code> alone is not enough — recent
+              Codex versions read provider settings from
+              <code>config.toml</code>.
+            </p>
+          </div>
+
+          <div class="setup-path">
+            <article>
+              <h3>Start the proxy</h3>
+              <p>
+                Run <code>npx copilot-proxy-api@latest start</code> and complete
+                GitHub sign-in.
+              </p>
+            </article>
+            <article>
+              <h3>Pick a model</h3>
+              <p>
+                Any id your plan advertises at
+                <code>/v1/models</code> works. Check the list before pinning
+                one.
+              </p>
+            </article>
+            <article>
+              <h3>Run Codex</h3>
+              <p>
+                Launch <code>codex</code> in a second terminal. The banner
+                should read <code>provider: copilot_proxy</code>.
+              </p>
+            </article>
+          </div>
+        </div>
+        <p
+          class="copy-status"
+          id="codex-copy-status"
           role="status"
           aria-live="polite"
         ></p>
@@ -261,10 +408,7 @@
               <p>Anthropic Messages API</p>
             </div>
             <code>POST /v1/messages</code>
-            <a
-              href="https://github.com/voidsteed/copilot-proxy-api#using-with-claude-code"
-              >Setup guide</a
-            >
+            <a href="#quick-start">Setup guide</a>
           </article>
           <article>
             <div>
@@ -272,10 +416,7 @@
               <p>OpenAI Responses API</p>
             </div>
             <code>POST /v1/responses</code>
-            <a
-              href="https://github.com/voidsteed/copilot-proxy-api#using-with-codex-cli"
-              >Setup guide</a
-            >
+            <a href="#codex-quick-start">Setup guide</a>
           </article>
           <article>
             <div>
@@ -403,8 +544,7 @@
     </footer>
 
     <script>
-      const copyButton = document.querySelector("[data-copy-target]");
-      const copyStatus = document.querySelector("#copy-status");
+      const copyButtons = document.querySelectorAll("[data-copy-target]");
       const demoVideo = document.querySelector(".hero-media video");
 
       if (
@@ -415,12 +555,15 @@
         demoVideo.removeAttribute("autoplay");
       }
 
-      if (copyButton instanceof HTMLButtonElement && copyStatus) {
+      for (const copyButton of copyButtons) {
+        const target = document.querySelector(`#${copyButton.dataset.copyTarget}`);
+        const copyStatus = document.querySelector(
+          `#${copyButton.dataset.copyStatus}`,
+        );
+
+        if (!copyStatus) continue;
+
         copyButton.addEventListener("click", async () => {
-          const targetId = copyButton.dataset.copyTarget;
-          const target = targetId
-            ? document.querySelector(`#${targetId}`)
-            : null;
           const command = target?.textContent?.trim();
 
           if (!command) {
@@ -432,7 +575,7 @@
             await navigator.clipboard.writeText(command);
             copyButton.textContent = "Copied";
             copyStatus.textContent =
-              "Quick-start command copied to your clipboard.";
+              copyButton.dataset.copyLabel ?? "Copied to your clipboard.";
           } catch {
             copyStatus.textContent = "Select the command and copy it manually.";
           }
