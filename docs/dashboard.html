@@ -1,460 +1,357 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Copilot API Usage Dashboard</title>
+    <title>Copilot Usage Dashboard — Copilot Proxy API</title>
     <meta
       name="description"
       content="View GitHub Copilot usage and quota data from your local Copilot Proxy API."
     />
-
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <meta name="theme-color" content="#1d2021" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
-      rel="stylesheet"
+      rel="canonical"
+      href="https://voidsteed.github.io/copilot-proxy-api/dashboard.html"
     />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
 
-    <script src="https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Copilot Proxy API" />
+    <meta
+      property="og:title"
+      content="Copilot Usage Dashboard — Copilot Proxy API"
+    />
+    <meta
+      property="og:description"
+      content="View GitHub Copilot usage and quota data from your local Copilot Proxy API."
+    />
+    <meta
+      property="og:url"
+      content="https://voidsteed.github.io/copilot-proxy-api/dashboard.html"
+    />
+    <meta
+      property="og:image"
+      content="https://voidsteed.github.io/copilot-proxy-api/assets/social-preview.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
 
-    <style>
-      /* Gruvbox-themed color palette */
-      :root {
-        /* Main Color Palette */
-        --color-red: #cc241d;
-        --color-green: #98971a;
-        --color-yellow: #d79921;
-        --color-blue: #458588;
-        --color-purple: #b16286;
-        --color-aqua: #689d6a;
-        --color-orange: #d65d0e;
-        --color-gray: #a89984;
-
-        /* Accent/Lighter/Darker Shades of Main Colors */
-        --color-red-accent: #fb4934;
-        --color-green-accent: #b8bb26;
-        --color-yellow-accent: #fabd2f;
-        --color-blue-accent: #83a598;
-        --color-purple-accent: #d3869b;
-        --color-aqua-accent: #8ec07c;
-        --color-orange-accent: #fe8019;
-        --color-gray-accent: #928374;
-
-        /* Background Colors */
-        --color-bg-darkest: #1d2021; /* bg0_h */
-        --color-bg: #282828; /* bg and bg0 */
-        --color-bg-light-1: #3c3836; /* bg1 */
-        --color-bg-light-2: #504945; /* bg2 */
-        --color-bg-light-3: #665c54; /* bg3 */
-        --color-bg-light-4: #7c6f64; /* bg4 */
-        --color-bg-soft: #32302f; /* bg0_s */
-
-        /* Foreground Colors */
-        --color-fg-darker: #a89984; /* fg4 - duplicate of gray */
-        --color-fg-dark: #bdae93; /* fg3 */
-        --color-fg-medium: #d5c4a1; /* fg2 */
-        --color-fg-light: #ebdbb2; /* fg and fg1 */
-        --color-fg-lightest: #fbf1c7; /* fg0 */
-      }
-
-      /* Custom styles using the new palette */
-      body {
-        font-family: "Inter", sans-serif;
-        background-color: var(--color-bg-darkest);
-        color: var(--color-fg-light);
-      }
-
-      /* Custom progress bar styles */
-      .progress-bar-bg {
-        background-color: var(--color-bg-light-1);
-      }
-      .progress-bar-fg {
-        transition: width 0.5s ease-in-out;
-      }
-
-      /* Custom scrollbar for the raw data view */
-      .code-block::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      .code-block::-webkit-scrollbar-track {
-        background: var(--color-bg);
-      }
-      .code-block::-webkit-scrollbar-thumb {
-        background: var(--color-bg-light-3);
-      }
-      .code-block::-webkit-scrollbar-thumb:hover {
-        background: var(--color-bg-light-4);
-      }
-
-      /* Style for focus rings to use variables */
-      .input-focus:focus {
-        --tw-ring-color: var(--color-blue);
-        border-color: var(--color-blue);
-      }
-
-
-    </style>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="dashboard.css" />
   </head>
-  <body class="antialiased">
-    <div id="app" class="min-h-screen p-4 sm:p-6">
-      <div class="max-w-7xl mx-auto">
-        <!-- Header Section -->
-        <header class="mb-6">
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="shell nav-shell">
+        <a class="brand" href="./">
+          <span class="brand-mark" aria-hidden="true">cp</span>
+          <span>copilot-proxy-api</span>
+        </a>
+
+        <nav class="site-nav" aria-label="Primary navigation">
+          <a class="nav-docs" href="./#quick-start">Claude Code</a>
+          <a class="nav-docs" href="./#codex-quick-start">Codex CLI</a>
+          <a href="./">Home</a>
           <a
-            href="./"
-            class="inline-flex mb-4 text-sm font-medium hover:underline"
-            style="color: var(--color-aqua-accent)"
-            >&larr; Project home</a
+            href="https://github.com/voidsteed/copilot-proxy-api"
+            target="_blank"
+            rel="noopener noreferrer"
+            >GitHub</a
           >
-          <h1
-            class="text-2xl font-bold flex items-center gap-2"
-            style="color: var(--color-fg-lightest)"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="lucide lucide-gauge-circle h-7 w-7"
-              style="color: var(--color-aqua-accent)"
-            >
-              <path d="M15.6 3.3a10 10 0 1 0 5.1 5.1" />
-              <path
-                d="M12 12a1 1 0 0 0-1-1v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1h-3z"
-              />
-              <path d="M12 6.8a10 10 0 0 0 -3.2 7.2" />
-            </svg>
-            <span>Copilot API Usage Dashboard</span>
-          </h1>
-          <p class="mt-1 text-sm" style="color: var(--color-gray)">
-            Should be the same as the one in VSCode
-          </p>
-        </header>
-
-        <!-- Form Section -->
-        <div
-          class="mb-6 p-4 border"
-          style="
-            background-color: var(--color-bg-soft);
-            border-color: var(--color-bg-light-2);
-          "
-        >
-          <form
-            id="endpoint-form"
-            class="flex flex-col sm:flex-row items-center gap-3"
-          >
-            <label
-              for="endpoint-url"
-              class="font-semibold whitespace-nowrap text-sm"
-              style="color: var(--color-fg-lightest)"
-              >API Endpoint URL</label
-            >
-            <input
-              type="text"
-              id="endpoint-url"
-              class="w-full px-3 py-1.5 border focus:ring-1 transition input-focus text-sm"
-              style="
-                background-color: var(--color-bg-darkest);
-                border-color: var(--color-bg-light-3);
-                color: var(--color-fg-medium);
-              "
-              placeholder="http://localhost:4141/usage"
-            />
-            <button
-              id="fetch-button"
-              type="submit"
-              class="w-full sm:w-auto font-bold py-1.5 px-5 transition-colors flex items-center justify-center gap-2 text-sm"
-              style="
-                background-color: var(--color-blue);
-                color: var(--color-bg-darkest);
-              "
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="lucide lucide-refresh-cw h-4 w-4"
-              >
-                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                <path d="M21 3v5h-5" />
-                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                <path d="M3 21v-5h5" />
-              </svg>
-              <span>Fetch</span>
-            </button>
-          </form>
-        </div>
-
-        <!-- Content Area for dynamic data -->
-        <main id="content-area"></main>
+        </nav>
       </div>
-    </div>
+    </header>
+
+    <main class="shell dash-main" id="main-content">
+      <div class="dash-head">
+        <h1>Copilot usage at a glance.</h1>
+        <p>
+          Reads the <code>/usage</code> endpoint of your local proxy. The
+          numbers match what GitHub Copilot reports in your editor.
+        </p>
+      </div>
+
+      <div class="endpoint-panel">
+        <form id="endpoint-form" class="endpoint-form">
+          <label for="endpoint-url">API endpoint</label>
+          <input
+            type="url"
+            id="endpoint-url"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="http://localhost:4141/usage"
+          />
+          <button id="fetch-button" class="button button-primary" type="submit">
+            Fetch
+          </button>
+        </form>
+      </div>
+
+      <div id="content-area" aria-live="polite"></div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-shell">
+        <p>Copilot Proxy API is open source under the MIT License.</p>
+        <div>
+          <a href="./">Project home</a>
+          <a href="https://www.npmjs.com/package/copilot-proxy-api">npm</a>
+          <a href="https://github.com/uheej0625/copilot-usage-viewer"
+            >copilot-usage-viewer</a
+          >
+        </div>
+      </div>
+    </footer>
 
     <script>
       document.addEventListener("DOMContentLoaded", () => {
-        const endpointForm = document.getElementById("endpoint-form");
-        const endpointUrlInput = document.getElementById("endpoint-url");
-        const contentArea = document.getElementById("content-area");
-        const fetchButton = document.getElementById("fetch-button");
-
-        // Apply hover effect for fetch button via JS
-        fetchButton.addEventListener("mouseenter", () => {
-          fetchButton.style.backgroundColor = "var(--color-blue-accent)";
-        });
-        fetchButton.addEventListener("mouseleave", () => {
-          fetchButton.style.backgroundColor = "var(--color-blue)";
-        });
+        const endpointForm = document.querySelector("#endpoint-form");
+        const endpointUrlInput = document.querySelector("#endpoint-url");
+        const contentArea = document.querySelector("#content-area");
 
         const DEFAULT_ENDPOINT = "http://localhost:4141/usage";
+        const state = { isLoading: false, error: null, data: null };
 
-        // --- State Management ---
-        const state = {
-          isLoading: false,
-          error: null,
-          data: null,
-        };
+        const escapeHtml = (value) =>
+          String(value).replace(
+            /[&<>"']/g,
+            (char) =>
+              ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;",
+              })[char],
+          );
 
-        // --- Rendering Logic ---
+        const titleCase = (value) =>
+          value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-        /**
-         * Safely calls lucide.createIcons() if the library is available.
-         */
-        function createIcons() {
-          if (typeof lucide !== "undefined") {
-            lucide.createIcons();
-          }
-        }
+        const formatNumber = (value) =>
+          typeof value === "number" ? value.toLocaleString() : value;
 
-        /**
-         * Renders the entire UI based on the current state.
-         */
         function render() {
           if (state.isLoading) {
-            contentArea.innerHTML = renderSpinner();
+            contentArea.innerHTML = `
+              <div class="dash-section">
+                <div class="state-box">
+                  <div class="spinner"></div>
+                  <h2>Fetching usage…</h2>
+                </div>
+              </div>`;
             return;
           }
+
           if (state.error) {
             contentArea.innerHTML = renderError(state.error);
-          } else if (state.data) {
+            return;
+          }
+
+          if (state.data) {
             contentArea.innerHTML = `
-                        ${renderUsageQuotas(state.data.quota_snapshots)}
-                        ${renderDetailedData(state.data)}
-                    `;
-          } else {
-            contentArea.innerHTML = renderWelcomeMessage();
-          }
-          // Replace placeholder icons with actual Lucide icons
-          createIcons();
-        }
-
-        /**
-         * Renders the "Usage Quotas" section with progress bars.
-         * @param {object} snapshots - The quota_snapshots object from the API response.
-         * @returns {string} HTML string for the usage quotas section.
-         */
-        function renderUsageQuotas(snapshots) {
-          if (!snapshots) return "";
-
-          const quotaCards = Object.entries(snapshots)
-            .map(([key, value]) => {
-              return renderQuotaCard(key, value);
-            })
-            .join("");
-
-          return `
-                    <section id="usage-quotas" class="mb-6">
-                        <h2 class="text-xl font-bold mb-3 flex items-center gap-2" style="color: var(--color-fg-lightest);">
-                            <i data-lucide="bar-chart-big"></i> Usage Quotas
-                        </h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            ${quotaCards}
-                        </div>
-                    </section>
-                `;
-        }
-
-        /**
-         * Renders a single quota card.
-         * @param {string} title - The name of the quota (e.g., 'chat').
-         * @param {object} details - The details object for the quota.
-         * @returns {string} HTML string for a single card.
-         */
-        function renderQuotaCard(title, details) {
-          const { entitlement, remaining, percent_remaining, unlimited } =
-            details;
-
-          const percentUsed = unlimited ? 0 : 100 - percent_remaining;
-          const used = unlimited
-            ? "N/A"
-            : (entitlement - remaining).toLocaleString();
-
-          let progressBarColor = "var(--color-green)";
-          if (percentUsed > 75) progressBarColor = "var(--color-yellow)";
-          if (percentUsed > 90) progressBarColor = "var(--color-red)";
-          if (unlimited) progressBarColor = "var(--color-blue)";
-
-          return `
-                    <div class="p-4 border" style="background-color: var(--color-bg); border-color: var(--color-bg-light-2);">
-                        <div class="flex justify-between items-center mb-2">
-                            <h3 class="text-md font-semibold capitalize" style="color: var(--color-fg-lightest);">${title.replace(/_/g, " ")}</h3>
-                            ${
-                              unlimited
-                                ? `<span class="px-2 py-0.5 text-xs font-medium" style="color: var(--color-blue-accent); background-color: var(--color-bg-light-1);">Unlimited</span>`
-                                : `<span class="text-sm font-mono" style="color: var(--color-fg-medium);">${percentUsed.toFixed(1)}% Used</span>`
-                            }
-                        </div>
-                        <div class="mb-3">
-                             <div class="w-full progress-bar-bg h-2">
-                                 <div class="progress-bar-fg h-2" style="width: ${unlimited ? 100 : percentUsed}%; background-color: ${progressBarColor};"></div>
-                             </div>
-                        </div>
-                        <div class="flex justify-between text-xs font-mono" style="color: var(--color-fg-dark);">
-                            <span>${used} / ${unlimited ? "∞" : entitlement.toLocaleString()}</span>
-                            <span>${unlimited ? "∞" : remaining.toLocaleString()} remaining</span>
-                        </div>
-                    </div>
-                `;
-        }
-
-        /**
-         * Recursively builds a formatted HTML list from a JSON object.
-         * @param {object} obj - The object to format.
-         * @returns {string} HTML string for the formatted list.
-         */
-        function formatObject(obj) {
-          if (obj === null || typeof obj !== "object") {
-            return `<span style="color: var(--color-green-accent);">${JSON.stringify(obj)}</span>`;
+              ${renderSummary(state.data)}
+              ${renderQuotas(state.data.quota_snapshots)}
+              ${renderDetails(state.data)}`;
+            return;
           }
 
-          return (
-            '<div class="pl-4">' +
-            Object.entries(obj)
-              .map(([key, value]) => {
-                const formattedKey = key.replace(/_/g, " ");
-                let displayValue;
-
-                if (Array.isArray(value)) {
-                  displayValue =
-                    value.length > 0
-                      ? `<span style='color: var(--color-gray-accent)'>[...${value.length} items]</span>`
-                      : `<span style='color: var(--color-gray-accent)'>[]</span>`;
-                } else if (typeof value === "object" && value !== null) {
-                  displayValue = formatObject(value);
-                } else if (typeof value === "boolean") {
-                  displayValue = `<span class="font-semibold" style="color: ${value ? "var(--color-green-accent)" : "var(--color-red-accent)"}">${value}</span>`;
-                } else {
-                  displayValue = `<span style="color: var(--color-blue-accent);">${JSON.stringify(value)}</span>`;
-                }
-
-                return `<div class="mt-1">
-                                <span class="capitalize font-semibold" style="color: var(--color-fg-medium);">${formattedKey}:</span>
-                                ${typeof value === "object" && value !== null && !Array.isArray(value) ? displayValue : ` ${displayValue}`}
-                           </div>`;
-              })
-              .join("") +
-            "</div>"
-          );
-        }
-
-        /**
-         * Renders the section with the full, formatted API response.
-         * @param {object} data - The full API response data.
-         * @returns {string} HTML string for the full data section.
-         */
-        function renderDetailedData(data) {
-          const formattedDetails = formatObject(data);
-          return `
-                    <section id="detailed-data">
-                        <h2 class="text-xl font-bold mb-3 flex items-center gap-2" style="color: var(--color-fg-lightest);">
-                           <i data-lucide="file-text"></i> Detailed Information
-                        </h2>
-                        <div class="border p-4 relative font-mono text-xs" style="background-color: var(--color-bg-darkest); border-color: var(--color-bg-light-2);">
-                            ${formattedDetails}
-                        </div>
-                    </section>
-                `;
-        }
-
-        /**
-         * Renders a loading spinner.
-         * @returns {string} HTML string for the spinner.
-         */
-        function renderSpinner() {
-          return `
-            <div class="flex justify-center items-center py-20">
-                <div class="animate-spin h-12 w-12 rounded-full border-4 border-transparent border-t-4" style="border-top-color: var(--color-blue);"></div>
+          contentArea.innerHTML = `
+            <div class="dash-section">
+              <div class="state-box">
+                <h2>Waiting for an endpoint</h2>
+                <p>
+                  Start the proxy with
+                  <code>npx copilot-proxy-api@latest start</code>, then fetch to
+                  load your quota data.
+                </p>
+              </div>
             </div>`;
         }
 
-        /**
-         * Renders an error message box.
-         * @param {string} message - The error message to display.
-         * @returns {string} HTML string for the error message.
-         */
-        function renderError(message) {
-          const container = document.createElement("div");
-          container.className = "p-3 border";
-          container.style.backgroundColor = "rgba(204, 36, 29, 0.2)";
-          container.style.borderColor = "var(--color-red)";
-          container.style.color = "var(--color-red-accent)";
-          container.setAttribute("role", "alert");
+        function renderSummary(data) {
+          const items = [
+            ["Account", data.login],
+            ["Plan", data.copilot_plan && titleCase(data.copilot_plan)],
+            ["Quota resets", data.quota_reset_date],
+            [
+              "Billing",
+              data.token_based_billing ? "Token based" : "Request based",
+            ],
+          ].filter(([, value]) => value !== undefined && value !== null);
 
-          container.innerHTML = `
-                <div class="flex items-center">
-                    <i data-lucide="alert-triangle" class="h-5 w-5 mr-3"></i>
-                    <div>
-                        <p class="font-bold text-sm">An Error Occurred</p>
-                        <p class="text-xs">${message}</p>
-                    </div>
-                </div>
-            `;
-          // Must create icons *after* innerHTML is set
-          setTimeout(
-            () =>
-              lucide.createIcons({
-                nodes: [container.querySelector("[data-lucide]")],
-              }),
-            0
-          );
-          return container.outerHTML;
-        }
+          if (items.length === 0) return "";
 
-        /**
-         * Renders a welcome message when the page first loads.
-         * @returns {string} HTML string for the welcome message.
-         */
-        function renderWelcomeMessage() {
           return `
-            <div class="text-center py-16 px-4 border" style="background-color: var(--color-bg-soft); border-color: var(--color-bg-light-2);">
-                <i data-lucide="info" class="mx-auto h-10 w-10" style="color: var(--color-gray-accent);"></i>
-                <h3 class="mt-2 text-lg font-semibold" style="color: var(--color-fg-lightest);">Welcome!</h3>
-                <p class="mt-1 text-sm" style="color: var(--color-gray);">Enter an API endpoint URL and click "Fetch" to see usage data.</p>
-            </div>
-          `;
+            <dl class="summary-grid">
+              ${items
+                .map(
+                  ([label, value]) => `
+                <div>
+                  <dt>${escapeHtml(label)}</dt>
+                  <dd title="${escapeHtml(value)}">${escapeHtml(value)}</dd>
+                </div>`,
+                )
+                .join("")}
+            </dl>`;
         }
 
-        // --- Data Fetching ---
+        function renderQuotas(snapshots) {
+          if (!snapshots || Object.keys(snapshots).length === 0) return "";
 
-        /**
-         * Fetches data from the specified API endpoint.
-         */
+          const cards = Object.entries(snapshots)
+            .map(([key, quota]) => renderQuotaCard(key, quota))
+            .join("");
+
+          return `
+            <section class="dash-section" aria-labelledby="quotas-title">
+              <h2 id="quotas-title">Usage quotas</h2>
+              <div class="quota-grid">${cards}</div>
+            </section>`;
+        }
+
+        function renderQuotaCard(title, quota) {
+          const {
+            entitlement = 0,
+            remaining = 0,
+            percent_remaining: percentRemaining = 100,
+            unlimited,
+            credits_used: creditsUsed,
+            overage_count: overageCount,
+          } = quota;
+
+          const percentUsed = Math.min(
+            100,
+            Math.max(0, 100 - percentRemaining),
+          );
+          const hasCredits = typeof creditsUsed === "number" && creditsUsed > 0;
+
+          let fillClass = "";
+          if (percentUsed > 90) fillClass = " is-crit";
+          else if (percentUsed > 75) fillClass = " is-warn";
+
+          // Unlimited plans report zeroed entitlements, so surface credits
+          // consumed instead of a meaningless 0 / 0 bar.
+          const figure =
+            unlimited && hasCredits ?
+              `${formatNumber(creditsUsed)} <span>credits used</span>`
+            : unlimited ? `<span>No quota limit</span>`
+            : `${percentUsed.toFixed(percentUsed < 10 ? 1 : 0)}<span>% used</span>`;
+
+          const meta =
+            unlimited ?
+              `<span>Entitlement not metered</span>${
+                overageCount ?
+                  `<span>${formatNumber(overageCount)} overage</span>`
+                : ""
+              }`
+            : `<span>${formatNumber(entitlement - remaining)} / ${formatNumber(entitlement)}</span>
+               <span>${formatNumber(remaining)} left</span>`;
+
+          return `
+            <article class="quota-card">
+              <div class="quota-card-top">
+                <h3>${escapeHtml(title.replace(/_/g, " "))}</h3>
+                ${
+                  unlimited ?
+                    `<span class="badge badge-unlimited">Unlimited</span>`
+                  : `<span class="badge">Metered</span>`
+                }
+              </div>
+              <p class="quota-figure">${figure}</p>
+              ${
+                unlimited ? ""
+                : `<div class="quota-track" role="img" aria-label="${percentUsed.toFixed(0)}% used">
+                     <div class="quota-fill${fillClass}" style="width: ${percentUsed}%"></div>
+                   </div>`
+              }
+              <div class="quota-meta">${meta}</div>
+            </article>`;
+        }
+
+        function renderDetails(data) {
+          const { quota_snapshots: _snapshots, ...rest } = data;
+
+          return `
+            <section class="dash-section" aria-labelledby="details-title">
+              <h2 id="details-title">Account details</h2>
+              <details class="detail-panel" open>
+                <summary>Overview</summary>
+                <div class="detail-body">${renderKeyValues(rest)}</div>
+              </details>
+              <details class="detail-panel">
+                <summary>Raw JSON response</summary>
+                <div class="detail-body">
+                  <pre class="raw-json">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
+                </div>
+              </details>
+            </section>`;
+        }
+
+        function renderKeyValues(object) {
+          const rows = Object.entries(object)
+            .map(([key, value]) => {
+              if (value === null || value === undefined) return "";
+
+              if (Array.isArray(value)) {
+                if (value.length === 0) return "";
+                const text = value
+                  .map((item) =>
+                    typeof item === "object" && item !== null ?
+                      (item.name ?? item.login ?? JSON.stringify(item))
+                    : item,
+                  )
+                  .join(", ");
+                return row(key, escapeHtml(text));
+              }
+
+              if (typeof value === "object") {
+                return `<dt>${escapeHtml(titleCase(key))}</dt>
+                        <dd><div class="kv-nested">${renderKeyValues(value)}</div></dd>`;
+              }
+
+              if (typeof value === "boolean") {
+                return row(
+                  key,
+                  `<span class="val-bool-${value}">${value}</span>`,
+                );
+              }
+
+              if (typeof value === "number") {
+                return row(
+                  key,
+                  `<span class="val-num">${formatNumber(value)}</span>`,
+                );
+              }
+
+              return row(key, escapeHtml(value));
+            })
+            .join("");
+
+          return `<dl class="kv">${rows}</dl>`;
+        }
+
+        function row(key, valueHtml) {
+          return `<dt>${escapeHtml(titleCase(key))}</dt><dd>${valueHtml}</dd>`;
+        }
+
+        function renderError(message) {
+          return `
+            <div class="dash-section">
+              <div class="state-box state-error" role="alert">
+                <h2>Could not load usage</h2>
+                <p>${escapeHtml(message)}</p>
+                <p>
+                  Check that the proxy is running and that the endpoint URL is
+                  reachable from this page.
+                </p>
+              </div>
+            </div>`;
+        }
+
         async function fetchData() {
           const url = endpointUrlInput.value.trim();
+
           if (!url) {
             state.error = "Endpoint URL cannot be empty.";
             state.isLoading = false;
@@ -468,15 +365,15 @@
 
           try {
             const response = await fetch(url);
+
             if (!response.ok) {
               throw new Error(
-                `Request failed with status ${response.status}: ${response.statusText}`
+                `Request failed with status ${response.status}: ${response.statusText}`,
               );
             }
-            const jsonData = await response.json();
-            state.data = jsonData;
+
+            state.data = await response.json();
           } catch (error) {
-            console.error("Fetch error:", error);
             state.data = null;
             state.error = error.message;
           } finally {
@@ -485,82 +382,32 @@
           }
         }
 
-        // --- Event Handlers & Initialization ---
-
-        /**
-         * Handles the form submission to trigger a data fetch.
-         * @param {Event} event - The form submission event.
-         */
-        function handleFormSubmit(event) {
+        endpointForm.addEventListener("submit", (event) => {
           event.preventDefault();
-          const url = endpointUrlInput.value.trim();
 
-          // Update URL query parameter, catching potential security errors in sandboxed environments
           try {
-            const currentUrl = new URL(window.location);
-            currentUrl.searchParams.set("endpoint", url);
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set("endpoint", endpointUrlInput.value.trim());
             window.history.pushState({}, "", currentUrl);
-          } catch (e) {
-            console.warn("Could not update URL: ", e.message);
+          } catch {
+            // Sandboxed contexts may block history updates; fetching still works.
           }
 
           fetchData();
+        });
+
+        const endpointFromUrl = new URLSearchParams(window.location.search).get(
+          "endpoint",
+        );
+
+        if (endpointFromUrl) {
+          endpointUrlInput.value = endpointFromUrl;
+          fetchData();
+        } else {
+          endpointUrlInput.value = DEFAULT_ENDPOINT;
+          render();
         }
-
-        /**
-         * Initializes the application.
-         */
-        function init() {
-          endpointForm.addEventListener("submit", handleFormSubmit);
-
-          // Get endpoint from URL param on load
-          const urlParams = new URLSearchParams(window.location.search);
-          const endpointFromUrl = urlParams.get("endpoint");
-
-          if (endpointFromUrl) {
-            endpointUrlInput.value = endpointFromUrl;
-            fetchData();
-          } else {
-            endpointUrlInput.value = DEFAULT_ENDPOINT;
-            render(); // Render initial welcome message
-          }
-        }
-
-        // Start the app
-        init();
       });
     </script>
-
-    <footer
-      class="text-center py-4 text-xs"
-      style="color: var(--color-gray-accent)"
-    >
-      <p>
-        Vibe coded by
-        <a
-          href="https://gemini.google.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="underline transition-colors"
-          style="color: var(--color-fg-dark)"
-          onmouseover="this.style.color='var(--color-fg-light)'"
-          onmouseout="this.style.color='var(--color-fg-dark)'"
-        >
-          Gemini
-        </a>
-        - Based on
-        <a
-          href="https://github.com/uheej0625/copilot-usage-viewer"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="underline transition-colors"
-          style="color: var(--color-fg-dark)"
-          onmouseover="this.style.color='var(--color-fg-light)'"
-          onmouseout="this.style.color='var(--color-fg-dark)'"
-        >
-          copilot-usage-viewer</a
-        >
-      </p>
-    </footer>
   </body>
 </html>
