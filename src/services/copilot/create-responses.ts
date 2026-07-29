@@ -22,6 +22,8 @@ const IMAGE_STRIPPED_PLACEHOLDER =
   "[image removed to stay under upstream payload limit]"
 const INVALID_OUTPUT_IMAGE_PLACEHOLDER =
   "[image output removed because its URL is not valid for Copilot Responses]"
+const ENCRYPTED_OUTPUT_ERROR =
+  "Encrypted function output content could not be decrypted or decoded."
 const INPUT_DROPPED_PLACEHOLDER =
   "[older response input omitted to stay under context limit]"
 const INPUT_TRUNCATED_PREFIX =
@@ -43,11 +45,11 @@ export async function createResponses(
 ): Promise<Response> {
   if (!state.copilotToken) throw new Error("Copilot token not found")
 
-  const upstreamPayload = fitResponsesPayload(
+  let upstreamPayload = fitResponsesPayload(
     sanitizeResponsesPayload(payload),
     computeResponsesPayloadCeiling(payload.model),
   )
-  const body = JSON.stringify(upstreamPayload)
+  let body = JSON.stringify(upstreamPayload)
   const headers: Record<string, string> = {
     ...copilotHeaders(state, responsesPayloadHasImages(upstreamPayload)),
     accept: upstreamPayload.stream ? "text/event-stream" : "application/json",
@@ -58,14 +60,34 @@ export async function createResponses(
     `Sending responses payload: ${body.length} bytes, model: ${payload.model}`,
   )
 
-  const response = await copilotFetch(`${copilotBaseUrl(state)}/responses`, {
+  const url = `${copilotBaseUrl(state)}/responses`
+  let response = await copilotFetch(url, {
     method: "POST",
     headers,
     body,
   })
 
   if (!response.ok) {
-    const errorBody = await response.text()
+    let errorBody = await response.text()
+
+    if (isEncryptedOutputError(response, errorBody)) {
+      const sanitized = stripEncryptedOutputParts(upstreamPayload)
+      if (sanitized.count > 0) {
+        upstreamPayload = sanitized.payload
+        body = JSON.stringify(upstreamPayload)
+        consola.warn(
+          `Copilot could not decrypt ${sanitized.count} encrypted output part(s); retrying without them`,
+        )
+        response = await copilotFetch(url, {
+          method: "POST",
+          headers,
+          body,
+        })
+        if (response.ok) return response
+        errorBody = await response.text()
+      }
+    }
+
     consola.error(
       `Failed to create responses - Status: ${response.status} ${response.statusText}`,
     )
@@ -113,6 +135,43 @@ export async function createResponses(
   }
 
   return response
+}
+
+function isEncryptedOutputError(
+  response: Response,
+  errorBody: string,
+): boolean {
+  return response.status === 400 && errorBody.includes(ENCRYPTED_OUTPUT_ERROR)
+}
+
+function stripEncryptedOutputParts(payload: ResponsesApiRequest): {
+  count: number
+  payload: ResponsesApiRequest
+} {
+  if (typeof payload.input === "string") return { count: 0, payload }
+
+  let count = 0
+  let input: Array<ResponsesInputItem> | undefined
+  for (const [index, item] of payload.input.entries()) {
+    if (!Array.isArray(item.content)) continue
+    const hasReadableText = item.content.some(
+      (part) =>
+        (part.type === "input_text" || part.type === "output_text")
+        && typeof part.text === "string",
+    )
+    if (!hasReadableText) continue
+
+    const content = item.content.filter(
+      (part) => part.type !== "encrypted_content",
+    )
+    if (content.length === item.content.length || content.length === 0) continue
+
+    count += item.content.length - content.length
+    input ??= [...payload.input]
+    input[index] = { ...item, content }
+  }
+
+  return { count, payload: input ? { ...payload, input } : payload }
 }
 
 function fitResponsesPayload(
