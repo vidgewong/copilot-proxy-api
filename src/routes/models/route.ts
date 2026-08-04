@@ -8,6 +8,13 @@ export const modelRoutes = new Hono()
 
 modelRoutes.get("/", async (c) => {
   try {
+    // Codex appends client_version and expects its own model-catalog schema.
+    // An empty catalog keeps Codex's bundled metadata and instructions; partial
+    // remote entries would replace them instead of merging individual fields.
+    if (c.req.query("client_version") !== undefined) {
+      return c.json({ models: [] })
+    }
+
     if (!state.models) {
       // This should be handled by startup logic, but as a fallback.
       await cacheModels()

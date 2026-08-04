@@ -16,7 +16,47 @@ function createApp(): Hono {
   return app
 }
 
+function cacheTestModels(): void {
+  state.models = {
+    object: "list",
+    data: [
+      {
+        id: "gpt-5.5",
+        object: "model",
+        name: "GPT-5.5",
+        model_picker_enabled: true,
+        preview: false,
+        vendor: "openai",
+        version: "1",
+        supported_endpoints: ["/responses"],
+        capabilities: {
+          family: "gpt-5.5",
+          limits: {},
+          object: "model_capabilities",
+          supports: {
+            parallel_tool_calls: true,
+            reasoning_effort: ["low", "medium", "high", "xhigh", "max"],
+          },
+          tokenizer: "o200k_base",
+          type: "chat",
+        },
+      },
+    ],
+  } satisfies ModelsResponse
+}
+
 describe("models route", () => {
+  test("preserves Codex bundled metadata for catalog refreshes", async () => {
+    cacheTestModels()
+
+    const response = await createApp().request(
+      "/v1/models?client_version=0.146.0",
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ models: [] })
+  })
+
   test("advertises Claude Code effort and thinking capabilities", async () => {
     state.models = {
       object: "list",
@@ -51,9 +91,15 @@ describe("models route", () => {
         capabilities: unknown
         supported_capabilities: Array<string>
       }>
+      has_more: boolean
+      models?: unknown
+      object: string
     }
 
     expect(response.status).toBe(200)
+    expect(body.object).toBe("list")
+    expect(body.has_more).toBe(false)
+    expect(body.models).toBeUndefined()
     expect(body.data[0].capabilities).toEqual(state.models.data[0].capabilities)
     expect(body.data[0].supported_capabilities).toEqual([
       "effort",

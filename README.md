@@ -445,7 +445,7 @@ codex -c model_provider='"openai"'
 
 - `service_tier` is ChatGPT-plan-specific. Codex may send it, but Copilot's Responses API rejects it, so the proxy strips it before forwarding.
 - `model_reasoning_effort = "high"` is passed through verbatim in the Responses request. The proxy does not validate it against the model's advertised effort levels.
-- Codex may log a warning while refreshing model metadata because its model catalog format differs from OpenAI's `/v1/models` list format. This does not block normal model calls.
+- Codex model-catalog refreshes keep Codex's bundled metadata and instructions. Requests with Codex's `client_version` query receive its native empty-catalog shape; ordinary `GET /v1/models` requests still return the full OpenAI-compatible model list.
 - Very large sessions are trimmed before forwarding (oldest input dropped, images replaced with placeholders) to stay under Copilot's payload ceiling. The proxy logs a warning when this happens.
 
 ## Running from Source
