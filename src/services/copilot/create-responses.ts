@@ -14,6 +14,14 @@ import {
   getModelPromptLimit,
 } from "~/lib/model-limits"
 import { state } from "~/lib/state"
+import {
+  createEncryptedOutputScope,
+  isEncryptedOutputError,
+  isImmediateEncryptedOutputStreamFailure,
+  isRejectedEncryptedOutput,
+  rememberRejectedEncryptedOutputs,
+  stripEncryptedOutputParts,
+} from "~/services/copilot/encrypted-output-recovery"
 
 const MAX_RESPONSES_PAYLOAD_BYTES = 5_000_000
 const CHARS_PER_TOKEN_ESTIMATE = 3.5
@@ -22,8 +30,6 @@ const IMAGE_STRIPPED_PLACEHOLDER =
   "[image removed to stay under upstream payload limit]"
 const INVALID_OUTPUT_IMAGE_PLACEHOLDER =
   "[image output removed because its URL is not valid for Copilot Responses]"
-const ENCRYPTED_OUTPUT_ERROR =
-  "Encrypted function output content could not be decrypted or decoded."
 const INPUT_DROPPED_PLACEHOLDER =
   "[older response input omitted to stay under context limit]"
 const INPUT_TRUNCATED_PREFIX =
@@ -45,57 +51,48 @@ export async function createResponses(
 ): Promise<Response> {
   if (!state.copilotToken) throw new Error("Copilot token not found")
 
-  let upstreamPayload = fitResponsesPayload(
+  const url = `${copilotBaseUrl(state)}/responses`
+  const encryptedOutputScope = createEncryptedOutputScope(
+    url,
+    payload.model,
+    state.githubToken ?? state.copilotToken,
+  )
+  const knownRejected = stripEncryptedOutputParts(
     sanitizeResponsesPayload(payload),
+    (fingerprint) =>
+      isRejectedEncryptedOutput(encryptedOutputScope, fingerprint),
+  )
+  const upstreamPayload = fitResponsesPayload(
+    knownRejected.payload,
     computeResponsesPayloadCeiling(payload.model),
   )
-  let body = JSON.stringify(upstreamPayload)
   const headers: Record<string, string> = {
     ...copilotHeaders(state, responsesPayloadHasImages(upstreamPayload)),
     accept: upstreamPayload.stream ? "text/event-stream" : "application/json",
     "X-Initiator": "agent",
   }
+  const bodyLength = JSON.stringify(upstreamPayload).length
 
   consola.info(
-    `Sending responses payload: ${body.length} bytes, model: ${payload.model}`,
+    `Sending responses payload: ${bodyLength} bytes, model: ${payload.model}`,
   )
 
-  const url = `${copilotBaseUrl(state)}/responses`
-  let response = await copilotFetch(url, {
-    method: "POST",
-    headers,
-    body,
-  })
+  const result = await fetchResponsesWithEncryptedOutputFallback(
+    { url, headers, encryptedOutputScope },
+    upstreamPayload,
+  )
+  const { response } = result
 
   if (!response.ok) {
-    let errorBody = await response.text()
-
-    if (isEncryptedOutputError(response, errorBody)) {
-      const sanitized = stripEncryptedOutputParts(upstreamPayload)
-      if (sanitized.count > 0) {
-        upstreamPayload = sanitized.payload
-        body = JSON.stringify(upstreamPayload)
-        consola.warn(
-          `Copilot could not decrypt ${sanitized.count} encrypted output part(s); retrying without them`,
-        )
-        response = await copilotFetch(url, {
-          method: "POST",
-          headers,
-          body,
-        })
-        if (response.ok) return response
-        errorBody = await response.text()
-      }
-    }
-
+    const errorBody = result.errorBody ?? (await response.text())
     consola.error(
       `Failed to create responses - Status: ${response.status} ${response.statusText}`,
     )
     consola.error(`Response body: ${errorBody}`)
-    consola.error(`Request payload size: ${body.length} bytes`)
+    consola.error(`Request payload size: ${result.body.length} bytes`)
 
-    if (isContextOverflow(response, errorBody, body.length)) {
-      const estimatedTokens = Math.ceil(body.length / 4)
+    if (isContextOverflow(response, errorBody, result.body.length)) {
+      const estimatedTokens = Math.ceil(result.body.length / 4)
       const modelCaps = state.models?.data.find((m) => m.id === payload.model)
         ?.capabilities.limits
       const modelLimit = getModelPromptLimit(payload.model, modelCaps)
@@ -137,41 +134,70 @@ export async function createResponses(
   return response
 }
 
-function isEncryptedOutputError(
-  response: Response,
-  errorBody: string,
-): boolean {
-  return response.status === 400 && errorBody.includes(ENCRYPTED_OUTPUT_ERROR)
+interface ResponsesFetchResult {
+  body: string
+  errorBody?: string
+  response: Response
 }
 
-function stripEncryptedOutputParts(payload: ResponsesApiRequest): {
-  count: number
-  payload: ResponsesApiRequest
-} {
-  if (typeof payload.input === "string") return { count: 0, payload }
+interface ResponsesFetchContext {
+  encryptedOutputScope: string
+  headers: Record<string, string>
+  url: string
+}
 
-  let count = 0
-  let input: Array<ResponsesInputItem> | undefined
-  for (const [index, item] of payload.input.entries()) {
-    if (!Array.isArray(item.content)) continue
-    const hasReadableText = item.content.some(
-      (part) =>
-        (part.type === "input_text" || part.type === "output_text")
-        && typeof part.text === "string",
+async function fetchResponsesWithEncryptedOutputFallback(
+  context: ResponsesFetchContext,
+  payload: ResponsesApiRequest,
+): Promise<ResponsesFetchResult> {
+  const { encryptedOutputScope, headers, url } = context
+  const fallback = stripEncryptedOutputParts(payload)
+  const initial = await sendResponsesRequest(url, headers, payload)
+  if (fallback.count === 0) return initial
+
+  if (
+    !initial.response.ok
+    && initial.errorBody
+    && isEncryptedOutputError(initial.response, initial.errorBody)
+  ) {
+    consola.warn(
+      `Copilot could not decrypt ${fallback.count} encrypted output part(s); retrying without them`,
     )
-    if (!hasReadableText) continue
-
-    const content = item.content.filter(
-      (part) => part.type !== "encrypted_content",
+    rememberRejectedEncryptedOutputs(
+      encryptedOutputScope,
+      fallback.fingerprints,
     )
-    if (content.length === item.content.length || content.length === 0) continue
-
-    count += item.content.length - content.length
-    input ??= [...payload.input]
-    input[index] = { ...item, content }
+    return sendResponsesRequest(url, headers, fallback.payload)
   }
 
-  return { count, payload: input ? { ...payload, input } : payload }
+  if (
+    initial.response.ok
+    && payload.stream
+    && (await isImmediateEncryptedOutputStreamFailure(initial.response))
+  ) {
+    void initial.response.body?.cancel().catch(() => undefined)
+    consola.warn(
+      `Copilot stream failed before output; retrying without ${fallback.count} encrypted output part(s)`,
+    )
+    rememberRejectedEncryptedOutputs(
+      encryptedOutputScope,
+      fallback.fingerprints,
+    )
+    return sendResponsesRequest(url, headers, fallback.payload)
+  }
+
+  return initial
+}
+
+async function sendResponsesRequest(
+  url: string,
+  headers: Record<string, string>,
+  payload: ResponsesApiRequest,
+): Promise<ResponsesFetchResult> {
+  const body = JSON.stringify(payload)
+  const response = await copilotFetch(url, { method: "POST", headers, body })
+  const errorBody = response.ok ? undefined : await response.text()
+  return { body, errorBody, response }
 }
 
 function fitResponsesPayload(
