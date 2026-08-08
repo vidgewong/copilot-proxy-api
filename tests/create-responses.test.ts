@@ -469,6 +469,70 @@ test("replaces local image URLs in Responses tool outputs", async () => {
   )
 })
 
+test("omits empty Responses tool descriptions", async () => {
+  const payload: ResponsesApiRequest = {
+    model: "gpt-5.5",
+    input: "Use a tool",
+    tools: [
+      {
+        type: "function",
+        name: "flat_tool",
+        description: "",
+        parameters: { type: "object" },
+      },
+      {
+        type: "function",
+        function: {
+          name: "nested_tool",
+          description: "",
+          parameters: { type: "object" },
+        },
+      },
+      {
+        type: "function",
+        name: "documented_tool",
+        description: "Keep this description",
+        parameters: { type: "object" },
+      },
+    ],
+  }
+
+  const fetchMock = mock((_url: string, opts: RequestInit) => {
+    const forwarded = JSON.parse(bodyToString(opts.body)) as ResponsesApiRequest
+    const hasEmptyDescription = forwarded.tools?.some(
+      (tool) => tool.description === "" || tool.function?.description === "",
+    )
+
+    return new Response(
+      JSON.stringify(
+        hasEmptyDescription ?
+          {
+            error: {
+              message:
+                "Invalid tool description: empty string. Expected a string with minimum length 1.",
+              code: "invalid_request_body",
+            },
+          }
+        : { id: "resp_tools" },
+      ),
+      {
+        status: hasEmptyDescription ? 400 : 200,
+        headers: { "content-type": "application/json" },
+      },
+    )
+  })
+  globalThis.fetch = fetchMock as unknown as typeof fetch
+
+  const response = await createResponses(payload)
+  const sentBody = bodyToString(fetchMock.mock.calls[0][1].body)
+  const forwarded = JSON.parse(sentBody) as ResponsesApiRequest
+
+  expect(response.status).toBe(200)
+  expect(forwarded.tools?.[0]).not.toHaveProperty("description")
+  expect(forwarded.tools?.[1].function).not.toHaveProperty("description")
+  expect(forwarded.tools?.[2].description).toBe("Keep this description")
+})
+
 test("maps remaining upstream Responses 413 to prompt-too-long error", async () => {
   const payload: ResponsesApiRequest = {
     model: "gpt-5.5",

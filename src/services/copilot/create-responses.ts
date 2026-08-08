@@ -644,7 +644,9 @@ function isContextOverflow(
 function sanitizeResponsesPayload(
   payload: ResponsesApiRequest,
 ): ResponsesApiRequest {
-  const sanitized: ResponsesApiRequest = sanitizeInvalidOutputImages(payload)
+  const sanitized = sanitizeEmptyToolDescriptions(
+    sanitizeInvalidOutputImages(payload),
+  )
 
   // Codex sends ChatGPT-only fast mode metadata; Copilot Responses rejects it.
   delete (sanitized as ResponsesApiRequest & { service_tier?: unknown })
@@ -657,6 +659,31 @@ function sanitizeResponsesPayload(
   return {
     ...sanitized,
     tools: sanitized.tools.filter((tool) => tool.type !== "image_generation"),
+  }
+}
+
+function sanitizeEmptyToolDescriptions(
+  payload: ResponsesApiRequest,
+): ResponsesApiRequest {
+  if (
+    !payload.tools?.some(
+      (tool) => tool.description === "" || tool.function?.description === "",
+    )
+  ) {
+    return payload
+  }
+
+  return {
+    ...payload,
+    tools: payload.tools.map((tool) => {
+      const sanitizedTool = { ...tool }
+      if (sanitizedTool.description === "") delete sanitizedTool.description
+      if (sanitizedTool.function?.description === "") {
+        sanitizedTool.function = { ...sanitizedTool.function }
+        delete sanitizedTool.function.description
+      }
+      return sanitizedTool
+    }),
   }
 }
 
