@@ -533,6 +533,111 @@ test("omits empty Responses tool descriptions", async () => {
   expect(forwarded.tools?.[2].description).toBe("Keep this description")
 })
 
+test("fills required tool descriptions in Responses input history", async () => {
+  const payload: ResponsesApiRequest = {
+    model: "gpt-5.5",
+    input: [
+      {
+        type: "message",
+        role: "developer",
+        content: "Use a replayed tool",
+        tools: [
+          {
+            type: "function",
+            name: "flat_history_tool",
+            description: "",
+            parameters: { type: "object" },
+          },
+          {
+            type: "function",
+            function: {
+              name: "nested_history_tool",
+              description: "",
+              parameters: { type: "object" },
+            },
+          },
+          {
+            type: "function",
+            name: "documented_history_tool",
+            description: "Keep this history description",
+            parameters: { type: "object" },
+          },
+          {
+            type: "function",
+            name: "missing_history_description",
+            parameters: { type: "object" },
+          },
+          {
+            type: "function",
+            name: "blank_history_description",
+            description: "   ",
+            parameters: { type: "object" },
+          },
+        ],
+      },
+    ],
+  }
+
+  const fetchMock = mock((_url: string, opts: RequestInit) => {
+    const forwarded = JSON.parse(bodyToString(opts.body)) as ResponsesApiRequest
+    const input = Array.isArray(forwarded.input) ? forwarded.input : []
+    const tools = input[0]?.tools as
+      | Array<{
+          description?: string
+          function?: { description?: string }
+        }>
+      | undefined
+    const invalidTool = tools?.find(
+      (tool) =>
+        typeof tool.description !== "string" || tool.description.length === 0,
+    )
+    let errorMessage: string | undefined
+    if (invalidTool?.description === "") {
+      errorMessage =
+        "Invalid 'input[0].tools[0].description': empty string. Expected a string with minimum length 1, but got an empty string instead."
+    } else if (invalidTool) {
+      errorMessage =
+        "Missing required parameter: 'input[0].tools[0].description'."
+    }
+
+    return new Response(
+      JSON.stringify(
+        errorMessage ?
+          {
+            error: {
+              message: errorMessage,
+              code: "invalid_request_body",
+            },
+          }
+        : { id: "resp_history_tools" },
+      ),
+      {
+        status: errorMessage ? 400 : 200,
+        headers: { "content-type": "application/json" },
+      },
+    )
+  })
+  globalThis.fetch = fetchMock as unknown as typeof fetch
+
+  const response = await createResponses(payload)
+  const forwarded = JSON.parse(
+    bodyToString(fetchMock.mock.calls[0][1].body),
+  ) as ResponsesApiRequest
+  const input = Array.isArray(forwarded.input) ? forwarded.input : []
+  const tools = input[0]?.tools as Array<{
+    description?: string
+    function?: { description?: string }
+  }>
+
+  expect(response.status).toBe(200)
+  expect(tools[0].description).toBe("Tool flat_history_tool")
+  expect(tools[1].description).toBe("Tool nested_history_tool")
+  expect(tools[1].function).not.toHaveProperty("description")
+  expect(tools[2].description).toBe("Keep this history description")
+  expect(tools[3].description).toBe("Tool missing_history_description")
+  expect(tools[4].description).toBe("Tool blank_history_description")
+})
+
 test("maps remaining upstream Responses 413 to prompt-too-long error", async () => {
   const payload: ResponsesApiRequest = {
     model: "gpt-5.5",

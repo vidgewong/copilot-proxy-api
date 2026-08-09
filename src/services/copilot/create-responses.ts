@@ -644,7 +644,7 @@ function isContextOverflow(
 function sanitizeResponsesPayload(
   payload: ResponsesApiRequest,
 ): ResponsesApiRequest {
-  const sanitized = sanitizeEmptyToolDescriptions(
+  const sanitized = normalizeToolDescriptions(
     sanitizeInvalidOutputImages(payload),
   )
 
@@ -662,29 +662,78 @@ function sanitizeResponsesPayload(
   }
 }
 
-function sanitizeEmptyToolDescriptions(
+function normalizeToolDescriptions(
   payload: ResponsesApiRequest,
 ): ResponsesApiRequest {
-  if (
-    !payload.tools?.some(
-      (tool) => tool.description === "" || tool.function?.description === "",
-    )
-  ) {
-    return payload
+  const tools = normalizeToolList(payload.tools)
+  let sanitized = tools === payload.tools ? payload : { ...payload, tools }
+
+  if (typeof payload.input === "string") return sanitized
+
+  let input: Array<ResponsesInputItem> | undefined
+  for (const [index, item] of payload.input.entries()) {
+    const itemTools = normalizeToolList(item.tools, true)
+    if (itemTools === item.tools) continue
+
+    input ??= [...payload.input]
+    input[index] = { ...item, tools: itemTools }
   }
 
-  return {
-    ...payload,
-    tools: payload.tools.map((tool) => {
-      const sanitizedTool = { ...tool }
-      if (sanitizedTool.description === "") delete sanitizedTool.description
-      if (sanitizedTool.function?.description === "") {
-        sanitizedTool.function = { ...sanitizedTool.function }
-        delete sanitizedTool.function.description
-      }
-      return sanitizedTool
-    }),
+  if (input) sanitized = { ...sanitized, input }
+  return sanitized
+}
+
+function normalizeToolList(
+  tools: ResponsesApiRequest["tools"],
+  descriptionRequired = false,
+): ResponsesApiRequest["tools"] {
+  if (
+    !Array.isArray(tools)
+    || !tools.some(
+      (tool) =>
+        (descriptionRequired && !isNonBlankString(tool.description))
+        || (tool.description !== undefined
+          && !isNonBlankString(tool.description))
+        || (tool.function?.description !== undefined
+          && !isNonBlankString(tool.function.description)),
+    )
+  ) {
+    return tools
   }
+
+  return tools.map((tool) => {
+    const sanitizedTool = { ...tool }
+    if (descriptionRequired && !isNonBlankString(sanitizedTool.description)) {
+      const nestedDescription = sanitizedTool.function?.description
+      let name: string | undefined
+      if (isNonBlankString(sanitizedTool.name)) {
+        name = sanitizedTool.name
+      } else if (isNonBlankString(sanitizedTool.function?.name)) {
+        name = sanitizedTool.function.name
+      }
+      sanitizedTool.description = name ? `Tool ${name}` : "Tool"
+      if (isNonBlankString(nestedDescription)) {
+        sanitizedTool.description = nestedDescription
+      }
+    } else if (
+      sanitizedTool.description !== undefined
+      && !isNonBlankString(sanitizedTool.description)
+    ) {
+      delete sanitizedTool.description
+    }
+    if (
+      sanitizedTool.function?.description !== undefined
+      && !isNonBlankString(sanitizedTool.function.description)
+    ) {
+      sanitizedTool.function = { ...sanitizedTool.function }
+      delete sanitizedTool.function.description
+    }
+    return sanitizedTool
+  })
+}
+
+function isNonBlankString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0
 }
 
 function sanitizeInvalidOutputImages(

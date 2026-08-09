@@ -72,6 +72,7 @@ export interface ResponsesInputItem {
   role?: "system" | "user" | "assistant" | "developer"
   content?: string | Array<ResponsesContentPart>
   type?: ResponsesInputItemType
+  tools?: Array<ResponsesTool>
   tool_call_id?: string
   call_id?: string
   name?: string
