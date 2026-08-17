@@ -27,6 +27,9 @@ interface RunServerOptions {
   showToken: boolean
   proxyEnv: boolean
   apiKey?: string
+  githubBaseUrl?: string
+  githubApiBaseUrl?: string
+  githubClientId?: string
 }
 
 export async function runServer(options: RunServerOptions): Promise<void> {
@@ -37,6 +40,15 @@ export async function runServer(options: RunServerOptions): Promise<void> {
   if (options.verbose) {
     consola.level = 5
     consola.info("Verbose logging enabled")
+  }
+
+  if (options.githubBaseUrl) state.githubBaseUrl = options.githubBaseUrl
+  if (options.githubApiBaseUrl)
+    state.githubApiBaseUrl = options.githubApiBaseUrl
+  if (options.githubClientId) state.githubClientId = options.githubClientId
+
+  if (state.githubBaseUrl !== "https://github.com") {
+    consola.info(`Using GitHub Enterprise: ${state.githubBaseUrl}`)
   }
 
   state.accountType = options.accountType
@@ -203,6 +215,21 @@ export const start = defineCommand({
       description:
         "Require one of these comma-separated local API keys for proxy routes",
     },
+    "github-url": {
+      type: "string",
+      description:
+        "GitHub base URL for GHES (default: https://github.com). Also reads GITHUB_BASE_URL env var",
+    },
+    "github-api-url": {
+      type: "string",
+      description:
+        "GitHub API base URL for GHES (default: https://api.github.com). Also reads GITHUB_API_BASE_URL env var",
+    },
+    "github-client-id": {
+      type: "string",
+      description:
+        "OAuth App Client ID for GHES (default: Copilot's github.com client). Also reads GITHUB_CLIENT_ID env var",
+    },
   },
   run({ args }) {
     const rateLimitRaw = args["rate-limit"]
@@ -221,6 +248,12 @@ export const start = defineCommand({
       showToken: args["show-token"],
       proxyEnv: args["proxy-env"],
       apiKey: args["api-key"],
+      githubBaseUrl:
+        args["github-url"] || process.env.GITHUB_BASE_URL || undefined,
+      githubApiBaseUrl:
+        args["github-api-url"] || process.env.GITHUB_API_BASE_URL || undefined,
+      githubClientId:
+        args["github-client-id"] || process.env.GITHUB_CLIENT_ID || undefined,
     })
   },
 })

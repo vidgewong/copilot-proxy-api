@@ -1,10 +1,7 @@
 import consola from "consola"
 
-import {
-  GITHUB_BASE_URL,
-  GITHUB_CLIENT_ID,
-  standardHeaders,
-} from "~/lib/api-config"
+import { standardHeaders } from "~/lib/api-config"
+import { state } from "~/lib/state"
 import { sleep } from "~/lib/utils"
 
 import type { DeviceCodeResponse } from "./get-device-code"
@@ -19,12 +16,12 @@ export async function pollAccessToken(
 
   while (true) {
     const response = await fetch(
-      `${GITHUB_BASE_URL}/login/oauth/access_token`,
+      `${state.githubBaseUrl}/login/oauth/access_token`,
       {
         method: "POST",
         headers: standardHeaders(),
         body: JSON.stringify({
-          client_id: GITHUB_CLIENT_ID,
+          client_id: state.githubClientId,
           device_code: deviceCode.device_code,
           grant_type: "urn:ietf:params:oauth:grant-type:device_code",
         }),

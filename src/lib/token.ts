@@ -39,10 +39,14 @@ export function refreshCopilotToken(staleToken?: string): Promise<string> {
 }
 
 export const setupCopilotToken = async () => {
-  const { token, refresh_in } = await getCopilotToken()
+  const { token, refresh_in, endpoints } = await getCopilotToken()
   state.copilotToken = token
 
-  // Display the Copilot token to the screen
+  if (endpoints?.api && !state.copilotBaseUrlOverride) {
+    state.copilotBaseUrlOverride = endpoints.api
+    consola.info(`Using Copilot API endpoint: ${endpoints.api}`)
+  }
+
   consola.debug("GitHub Copilot Token fetched successfully!")
   if (state.showToken) {
     consola.info("Copilot token:", token)

@@ -16,6 +16,12 @@ export interface State {
   // Rate limiting configuration
   rateLimitSeconds?: number
   lastRequestTimestamp?: number
+
+  // GitHub Enterprise Server support
+  githubBaseUrl: string
+  githubApiBaseUrl: string
+  githubClientId: string
+  copilotBaseUrlOverride?: string
 }
 
 export const state: State = {
@@ -24,4 +30,7 @@ export const state: State = {
   rateLimitWait: false,
   showToken: false,
   localApiKeys: [],
+  githubBaseUrl: "https://github.com",
+  githubApiBaseUrl: "https://api.github.com",
+  githubClientId: "Iv1.b507a08c87ecfe98",
 }
